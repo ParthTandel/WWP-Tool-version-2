@@ -1,0 +1,12 @@
+{
+  "17th century morphed": {
+    "shortName": "17th century morphed",
+    "location": "data/wwo_eme-morph_17C.txt.bin",
+    "description": ""
+  },
+  "18th century morphed": {
+    "shortName": "18th century morphed",
+    "location": "data/wwo_eme-morph_18C.txt.bin",
+    "description": ""
+  }
+}
