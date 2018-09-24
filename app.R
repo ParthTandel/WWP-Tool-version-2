@@ -537,5 +537,7 @@ shinyApp(
     })
 
 
-  }
+  },
+  options = list(port = 3939)
 )
+
