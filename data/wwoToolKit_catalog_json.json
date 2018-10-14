@@ -83,7 +83,7 @@
     "shortName": "WWO Global Publications",
     "location": "data/wwo_xquery-nonreg_non-us.bin",
 	"shortDescription" : "Texts published outside the U.S. in the WWO",
-	"public" : "true",
+	"public" : "false",
     "description": "Texts published outside the U.S. Texts have been prepared using XSLT and XQuery processes that clean and regularize the corpus."
   },
 
@@ -91,7 +91,7 @@
     "shortName": "WWO U.S. Publications",
     "location": "data/wwo_xquery-nonreg_us.bin",
 	"shortDescription" : "U.S. publications in the WWO",
-	"public" : "true",
+	"public" : "false",
     "description": "Only texts published in the United States. Texts have been prepared using XSLT and XQuery processes that clean and regularize the corpus."
   },
 
