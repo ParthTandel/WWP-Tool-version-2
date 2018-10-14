@@ -27,6 +27,9 @@ Selected_default <- 1
 Selected_compare_1 <- 1
 Selected_compare_2 <- 1
 
+ls_download_cluster <- c()
+
+
 
 i <- 1  
 for(fn in json_data) {
@@ -62,6 +65,19 @@ for(fn in json_data) {
 
 body <- dashboardBody(
   tags$head(tags$style(HTML("
+                           
+                            #downloadData {
+                              margin-top: 6px !important;
+                              height: fit-content !important;
+                              color: #444 !important;
+                            }
+
+                            #Download_reset_button {
+                              display: flex !important;
+                              margin: 0 !important;
+                              padding: 0 !important;
+                            }
+  
                             
                             .nav-item {
                               margin: 0px 2px;
@@ -386,6 +402,7 @@ shinyApp(
                                    selected = Selected_default),
                        br(),
                        actionButton("clustering_reset_input", "Reset clusters")
+                       
       ),
 
       conditionalPanel(condition="input.tabset1==2",
@@ -406,7 +423,12 @@ shinyApp(
                                    choices = fileList,
                                    selected = Selected_default),
                        br(),
-                       actionButton("clustering_reset_input_fullcluster", "Reset clusters")
+                       column(
+                         id = "Download_reset_button",
+                         width = 12,
+                         actionButton("clustering_reset_input_fullcluster", "Reset clusters"),
+                         downloadButton("downloadData", "Download")
+                       )
       ),
 
       conditionalPanel(condition="input.tabset1==4",
@@ -455,6 +477,19 @@ shinyApp(
 
     set.seed(122)
     histdata <- rnorm(500)
+    
+    output$downloadData <- downloadHandler(
+      filename = function() {
+        paste(input$modelSelect_clusters[[1]], ".csv", sep = "")
+      },
+      
+      content = function(file) {
+        data <- sapply(ls_download_cluster,function(n) {
+          paste0(names(list_clustering[[input$modelSelect_clusters[[1]]]]$cluster[list_clustering[[input$modelSelect_clusters[[1]]]]$cluster==n][1:150]))
+        }) %>% as_data_frame()
+        
+        write.csv(data, file, row.names = FALSE)
+      })
 
 
     observeEvent(input$modelSelect, {
@@ -644,15 +679,19 @@ shinyApp(
 
     output$clusters_full <- DT::renderDataTable(DT::datatable({
       data <- sapply(sample(1:150,10),function(n) {
+        ls_download_cluster <<- c(ls_download_cluster,n)
         paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=",names(list_clustering[[input$modelSelect_clusters[[1]]]]$cluster[list_clustering[[input$modelSelect_clusters[[1]]]]$cluster==n][1:150]),"'>",names(list_clustering[[input$modelSelect_clusters[[1]]]]$cluster[list_clustering[[input$modelSelect_clusters[[1]]]]$cluster==n][1:150]),"</a>")
       }) %>% as_data_frame()
+      
     }, escape = FALSE, colnames=c(paste0("cluster_",1:10)), options = list(lengthMenu = c(10, 20, 100, 150), pageLength = 10, searching = TRUE)))
 
 
 
     observeEvent(input$clustering_reset_input_fullcluster, {
+      ls_download_cluster <<- c()
       output$clusters_full <- DT::renderDataTable(DT::datatable({
         data <- sapply(sample(1:150,10),function(n) {
+          ls_download_cluster <<- c(ls_download_cluster,n)
           paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=",names(list_clustering[[input$modelSelect_clusters[[1]]]]$cluster[list_clustering[[input$modelSelect_clusters[[1]]]]$cluster==n][1:150]),"'>",names(list_clustering[[input$modelSelect_clusters[[1]]]]$cluster[list_clustering[[input$modelSelect_clusters[[1]]]]$cluster==n][1:150]),"</a>")
         }) %>% as_data_frame()
       }, escape = FALSE, colnames=c(paste0("cluster_",1:10)), options = list(lengthMenu = c(10, 20, 100, 150), pageLength = 10,searching = TRUE)))
