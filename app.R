@@ -12,8 +12,9 @@ library(wordcloud)
 
 
 
-
-json_file <- "data/wwoToolKit_catalog_json.json"
+json_file <- "model-descs-SC.json"
+# json_file <- "data/wwoToolKit_catalog_json.json"
+# json_file <- "data/test_catalog.json"
 json_data <- fromJSON(file=json_file)
 
 
@@ -39,7 +40,7 @@ for(fn in json_data) {
     print(fn$location)
     val <- fn$shortName
     
-    if(val == "WWO Corpus")
+    if(val == "WWO Full Corpus")
     {
       Selected_default <- val
       Selected_compare_1 <-val
@@ -72,10 +73,19 @@ body <- dashboardBody(
                               color: #444 !important;
                             }
 
+                            .dataTables_wrapper {
+                              overflow-y : auto;
+                            }
+
+
                             #Download_reset_button {
                               display: flex !important;
                               margin: 0 !important;
                               padding: 0 !important;
+                            }
+
+                            .datatables {
+                              min-height : 20px !important;
                             }
   
                             
@@ -142,18 +152,21 @@ body <- dashboardBody(
                    div(class = "model_desc", p(textOutput("model_desc_basic"))),
                    width=12
                  ),
-                 box(solidHeader = TRUE, textInput("basic_word1", "Search Word:", width = "500px"), width=12)
+                 box(solidHeader = TRUE, textInput("basic_word1", "Query term:", width = "500px"), width=12)
                )
                ,
                fluidRow(
                  box(
                    # solidHeader = TRUE,
-                   DT::dataTableOutput("basic_table")
+                   DT::dataTableOutput("basic_table"),
+                   width = 6
                    
                  ),
                  box(
                    # solidHeader = TRUE,
-                   DTOutput('tbl')
+                   DTOutput('tbl'),
+                   width = 6
+                   
                    
                  )
                )
@@ -163,7 +176,7 @@ body <- dashboardBody(
       tabPanel("Compare", value=2,
 
                fluidRow(
-                 box( solidHeader = TRUE, textInput("basic_word_c", "Search Word:", width = "500px"), width=12)
+                 box( solidHeader = TRUE, textInput("basic_word_c", "Query term:", width = "500px"), width=12)
                ),
 
 
@@ -336,7 +349,7 @@ body <- dashboardBody(
 
                )
       ),
-      tabPanel("Visualisation", value=5,
+      tabPanel("Visualization", value=5,
                fluidRow(
 
                  box(
@@ -348,7 +361,7 @@ body <- dashboardBody(
                  conditionalPanel(condition="input.visualisation_selector=='wc'",
                     shinyjs::useShinyjs(),
                     tags$head(tags$style("#word_cloud{height:calc(100vh - 200px) !important;}")),
-                    box( solidHeader = TRUE, textInput("word_cloud_word", "Search Word:", width = "500px"), width=12),
+                    box( solidHeader = TRUE, textInput("word_cloud_word", "Query term:", width = "500px"), width=12),
                     box(
                       solidHeader = TRUE,
                       plotOutput("word_cloud"),
@@ -528,7 +541,7 @@ shinyApp(
 
 
     output$word_cloud <- renderPlot({
-        validate(need(input$word_cloud_word != "", "please enter a valid search term."))
+        validate(need(input$word_cloud_word != "", "Please enter a valid QueryQuery term: term."))
         data <-  list_models[[input$modelSelect_Visualisation_tabs[[1]]]] %>% closest_to(input$word_cloud_word, 150)
         colnames(data) <- c("words", "sims")
         data <- mutate(data, sims = as.integer(sims * 100))
@@ -542,7 +555,7 @@ shinyApp(
     })
 
     output$addition_table <- DT::renderDataTable(DT::datatable({
-      validate(need(input$addition_word1 != "" && input$addition_word2 != "", "Enter search term into term 1 and term 2."))
+      validate(need(input$addition_word1 != "" && input$addition_word2 != "", "Enter query term into word 1 and word 2."))
       data <- list_models[[input$modelSelect_analogies_tabs[[1]]]] %>% closest_to(list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$addition_word1,] +
                                                                                   list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$addition_word2,], 150) %>% mutate("Link" <- paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=", .$word,"'>",.$word,"</a>")) %>% .[c(3,2)]
 
@@ -550,7 +563,7 @@ shinyApp(
 
     # Subtraction tab
     output$subtraction_table <- DT::renderDataTable(DT::datatable({
-      validate(need(input$subtraction_word1 != "" && input$subtraction_word2 != "", "Enter search term into term 1 and term 2."))
+      validate(need(input$subtraction_word1 != "" && input$subtraction_word2 != "", "Enter query term into word 1 and word 2."))
       data <- list_models[[input$modelSelect_analogies_tabs[[1]]]] %>% closest_to(list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$subtraction_word1,] -
                                                                                   list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$subtraction_word2,], 150) %>% mutate("Link" <- paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=", .$word,"'>",.$word,"</a>")) %>% .[c(3,2)]
 
@@ -558,14 +571,14 @@ shinyApp(
 
 
     output$analogies_table <- DT::renderDataTable(DT::datatable({
-      validate(need(input$analogies_word1 != "" && input$analogies_word2 != "" && input$analogies_word3 != "", "Enter search term into Word 1, Word 2, and Word 3."))
+      validate(need(input$analogies_word1 != "" && input$analogies_word2 != "" && input$analogies_word3 != "", "Enter query term into Word 1, Word 2, and Word 3."))
       data <- list_models[[input$modelSelect_analogies_tabs[[1]]]] %>% closest_to(list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$analogies_word1,] - list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$analogies_word2,] + list_models[[input$modelSelect_analogies_tabs[[1]]]][rownames(list_models[[input$modelSelect_analogies_tabs[[1]]]])==input$analogies_word3,], input$all_count) %>% mutate("Link" <- paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=", .$word,"'>",.$word,"</a>")) %>% .[c(3,2)]
 
     }, escape = FALSE, colnames=c("Word", "Similarity to word(s)"), options = list(lengthMenu = c(10, 20, 100, 150), pageLength = 10, searching = TRUE)))
 
 
     output$advanced_table <- DT::renderDataTable(DT::datatable({
-      validate(need(input$advanced_word1 != "", "Enter search term into Word 1."))
+      validate(need(input$advanced_word1 != "", "Enter query term into Word 1."))
       data <- list_models[[input$modelSelect_analogies_tabs[[1]]]] %>% closest_to(input$advanced_word1, 150)
       if (input$advanced_word2 != "" && input$advanced_word3 == "") {
         if (input$advanced_math == "+") {
@@ -662,10 +675,10 @@ shinyApp(
 
 
     output$tbl <- DT::renderDataTable(DT::datatable({
-      data <- sapply(sample(1:150,5),function(n) {
+      data <- sapply(sample(1:150,4),function(n) {
         paste0("<a target='_blank' href='http://wwo.wwp.northeastern.edu/WWO/search?keyword=",names(list_clustering[[input$modelSelect[[1]]]]$cluster[list_clustering[[input$modelSelect[[1]]]]$cluster==n][1:150]),"'>",names(list_clustering[[input$modelSelect[[1]]]]$cluster[list_clustering[[input$modelSelect[[1]]]]$cluster==n][1:150]),"</a>")
       }) %>% as_data_frame()
-    }, escape = FALSE, colnames=c(paste0("cluster_",1:5)), options = list(lengthMenu = c(10, 20, 100, 150), pageLength = 10, searching = TRUE)))
+    }, escape = FALSE, colnames=c(paste0("cluster_",1:4)), options = list(lengthMenu = c(10, 20, 100, 150), pageLength = 10, searching = TRUE)))
 
 
     observeEvent(input$clustering_reset_input, {
