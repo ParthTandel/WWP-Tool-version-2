@@ -8,12 +8,14 @@ library(shinyjs)
 library(wordVectors)
 library(DT)
 library(wordcloud)
+library(ggrepel)
+
 
 
 
 
 json_file <- "model-descs-SC.json"
-# json_file <- "data/wwoToolKit_catalog_json.json"
+# # json_file <- "data/wwoToolKit_catalog_json.json"
 # json_file <- "data/test_catalog.json"
 json_data <- fromJSON(file=json_file)
 
@@ -23,12 +25,16 @@ fileList <- c()
 list_clustering <- list()
 list_models <- list()
 list_Desc <- list()
+vectors <- list()
 
 Selected_default <- 1
 Selected_compare_1 <- 1
 Selected_compare_2 <- 1
 
 ls_download_cluster <- c()
+
+
+
 
 
 
@@ -57,6 +63,12 @@ for(fn in json_data) {
     list_models[[fn$shortName]] <- read.vectors(fn$location)
     list_Desc[[fn$shortName]] <- fn$description
     list_clustering [[fn$shortName]] <- kmeans( list_models[[fn$shortName]] , centers=150,iter.max = 40)
+    
+    
+    data <- as.matrix(list_models[[fn$shortName]])
+    vectors[[fn$shortName]] <-stats::predict(stats::prcomp(data))[,1:2]
+    
+    
     i = i + 1
   }
 }
@@ -65,6 +77,12 @@ for(fn in json_data) {
 
 
 body <- dashboardBody(
+  
+  tags$style(type="text/css",
+             ".shiny-output-error { visibility: hidden; }",
+             ".shiny-output-error:before { visibility: hidden; }"
+  ),
+  
   tags$head(tags$style(HTML("
                            
                             #downloadData {
@@ -75,6 +93,11 @@ body <- dashboardBody(
 
                             .dataTables_wrapper {
                               overflow-y : auto;
+                            }
+
+                            .visualization {
+                              width : 100%
+
                             }
 
 
@@ -103,6 +126,13 @@ body <- dashboardBody(
                                 display: table;
                                 content: unset;
                             }
+
+                            #word_cloud > img {
+                              display: block;
+                              margin-left: auto;
+                              margin-right: auto;
+                            }
+
                             .btn {
                                 font-size:14px !important;
                             }
@@ -359,14 +389,65 @@ body <- dashboardBody(
                  ),
 
                  conditionalPanel(condition="input.visualisation_selector=='wc'",
+                    class = "visualization",
                     shinyjs::useShinyjs(),
                     tags$head(tags$style("#word_cloud{height:calc(100vh - 200px) !important;}")),
                     box( solidHeader = TRUE, textInput("word_cloud_word", "Query term:", width = "500px"), width=12),
                     box(
-                      solidHeader = TRUE,
-                      plotOutput("word_cloud"),
+                      solidHeader = FALSE,
+                      box(
+                        solidHeader = TRUE,
+                        plotOutput("word_cloud"),
+                        width = 8
+                      ),
+                      box(
+                        solidHeader = TRUE,
+                        div(class = "model_desc", p("The visualizations tab allows you to create a 
+                                                    word cloud for the query term you would like to 
+                                                    analyze. The word cloud will produce a collage 
+                                                    of the most similar words to your query term 
+                                                    using the WWO general corpus model. You can 
+                                                    adjust the visualization based on the amount 
+                                                    of words you would like to see appear 
+                                                    (top slider bar on the left of this page). 
+                                                    These terms are based on their percentage of 
+                                                    similarity to the query term. The similarity 
+                                                    percentage is also represented in the visualization 
+                                                    by the color of each word. See below for the color 
+                                                    key. The second slider down from the similarity 
+                                                    bar will allow you to adjust the amount of words you 
+                                                    would like in your word cloud, and the bottom-most 
+                                                    slider controls the size of the plot image."),
+                                                  div("Similarity Color Key"),
+                                                  div("Similarity % -- Color"),
+                                                  div("91- 100 -- gray"),
+                                                  div("81 – 90 -- brown"),
+                                                  div("71 – 80 -- orange"),
+                                                  div("51 - 70 -- green")),
+                        width = 4
+                      ),
                       width = 12
                     )
+                 ),
+                 
+                 conditionalPanel(condition="input.visualisation_selector=='scatter'",
+                      class = "visualization",
+                      shinyjs::useShinyjs(),
+                      box(
+                        
+                        # conditionalPanel(condition = "!output.setupComplete",
+                        #                  box( title = "loading")),
+                        # 
+                        # conditionalPanel(condition = "output.setupComplete",
+                                         plotOutput("scatter_plot",height = "600px"),
+                                         width = 8
+                                         # )
+                        
+                      #   solidHeader = TRUE,
+                        # plotOutput("plot1")
+                        
+                        
+                      )
                  )
                )
       )
@@ -460,22 +541,31 @@ shinyApp(
                                    selected = Selected_default),
 
                        selectInput("visualisation_selector", "Select visualisation",
-                                   choices =  list("Word Cloud" = "wc", "Other" = "other"),
+                                   choices =  list("Word Cloud" = "wc", "2d Scatter plot" = "scatter"),
                                    selected = 1),
 
                        conditionalPanel(condition="input.visualisation_selector=='wc'",
                               sliderInput("freq",
                                           "Similarity",
-                                          min = 1,  max = 100, value = 15),
+                                          step = 5,
+                                          ticks = c(1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100),
+                                          min = 0,  max = 100, value = 15),
                               sliderInput("max",
                                           "Maximum Number of Words:",
-                                          min = 1,  max = 150,  value = 100),
+                                          min = 0,  max = 150,  value = 100),
                               sliderInput("scale",
                                           "Size of plot:",
-                                          min = 1,  max = 5,  value = 3)
+                                          min = 0,  max = 5,  value = 3)
                        ),
-                       conditionalPanel(condition="input.visualisation_selector=='other'",
-                                        "coming soon"
+                       conditionalPanel(condition="input.visualisation_selector=='scatter'",
+                            selectInput("scatter_cluster", "Cluster",
+                                        choices = list("V1","V2","V3", "V4", "V5", "V6", "V7", "V8", "V9", "V10" ),
+                                        selected = 1),
+                            sliderInput("scatter_number",
+                                        "Number of Words:",
+                                        min = 5,  max = 30,  value = 10),
+                            actionButton("clustering_reset_input_visualisation", "Reset clusters")
+                            
                        )
       )
 
@@ -487,9 +577,20 @@ shinyApp(
     output$tabset1Selected <- renderText({
       input$tabset1
     })
+    
+    
 
     set.seed(122)
     histdata <- rnorm(500)
+    
+
+    output$plot1 <- renderPlot({
+      plot(mtcars$wt, mtcars$mpg)
+    })
+    
+    outputOptions(output, "plot1", suspendWhenHidden = FALSE)
+    
+
     
     output$downloadData <- downloadHandler(
       filename = function() {
@@ -541,7 +642,7 @@ shinyApp(
 
 
     output$word_cloud <- renderPlot({
-        validate(need(input$word_cloud_word != "", "Please enter a valid QueryQuery term: term."))
+        validate(need(input$word_cloud_word != "", "Please enter a valid Query term:"))
         data <-  list_models[[input$modelSelect_Visualisation_tabs[[1]]]] %>% closest_to(input$word_cloud_word, 150)
         colnames(data) <- c("words", "sims")
         data <- mutate(data, sims = as.integer(sims * 100))
@@ -553,6 +654,75 @@ shinyApp(
                   colors = brewer.pal(8,"Dark2"), scale=c(input$scale,0.5))
 
     })
+    
+    
+    # rv <- reactiveValues()
+    # rv$setupComplete <- FALSE
+    
+    
+    
+    dataset <- reactive({
+      
+      times <- input$clustering_reset_input_visualisation
+
+      
+      df2 <- sapply(sample(1:150,10),function(n) {
+        paste0(names(list_clustering[[input$modelSelect_Visualisation_tabs[[1]]]]$cluster[list_clustering[[input$modelSelect_Visualisation_tabs[[1]]]]$cluster==n][1:150]))
+      }) %>% as_data_frame()
+      
+      df2
+      # rv$setupComplete <- TRUE
+      
+    })
+    
+    datascatter <- reactive({
+      
+      df2 <- dataset()
+      
+      # print(df2)
+      
+      x <- c()
+      y <- c()
+      names <- c()
+      cluster <- c()
+      
+      
+      vector <- vectors[[input$modelSelect_Visualisation_tabs[[1]]]]
+      for (column in colnames(df2))
+      {
+        for (word in head(df2,input$scatter_number)[column][[1]]){
+          x <- append(x, vector[word, 'PC1'])
+          y <- append(y, vector[word, 'PC2'])
+          names <- append(names,word)
+          cluster <- append(cluster,column)
+        }
+      }
+      
+      
+      
+      
+      df_new <- data.frame(x = x, y = y, names = names, cluster = as.factor(cluster) ,stringsAsFactors = FALSE)
+      df_new
+      
+    })
+    
+    # output$setupComplete <- reactive({
+    #   return(rv$setupComplete)
+    # })
+    
+    # outputOptions(output, 'setupComplete', suspendWhenHidden=FALSE)
+    
+
+    output$scatter_plot <- renderPlot({
+      ggplot(datascatter(), aes(x=x, y=y, colour=cluster), height = 600,width = 800) +
+        geom_point() +
+        geom_text_repel(aes(label=ifelse(cluster == input$scatter_cluster ,as.character(names),'')), hjust=0.5,vjust=-0.5)
+
+    })
+    
+    
+    outputOptions(output, "scatter_plot", suspendWhenHidden = FALSE)
+    
 
     output$addition_table <- DT::renderDataTable(DT::datatable({
       validate(need(input$addition_word1 != "" && input$addition_word2 != "", "Enter query term into word 1 and word 2."))
